@@ -1,4 +1,5 @@
 #include "draw.h"
+#include "color.h"
 
 int main(int argc, char *argv[])
 {
@@ -14,7 +15,7 @@ int main(int argc, char *argv[])
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
 
-    init();
+    init();                 
     glutDisplayFunc(display);
 
     glutMainLoop();
