@@ -60,32 +60,29 @@ mingw32-make
 
 右键单击窗口，会显示：
 
+```
 Choose Shape
-
 Choose Color
-
 Mode
-
 Clear Screen
+```
 
 ### 2. 选择绘制形状
 
-Choose Shape → Line / Rectangle / Circle ...
+- Choose Shape → Line / Rectangle / Circle ...
 
 ### 3. 选择颜色
 
-Choose Color → Red / Blue / Green ...
+- Choose Color → Red / Blue / Green ...
 
 ### 4. 选择绘制模式
 
-Choose Mode → Line（仅轮廓）
-
-Choose Mode → Fill（实心 + 黑色轮廓）
+- Choose Mode → Line（仅轮廓）
+- Choose Mode → Fill（实心 + 黑色轮廓）
 
 ### 5. 左键拖拽绘制
 
-按下左键：确定起点
+- **按下左键**：确定起点  
+- **拖动**：实时显示当前图形  
+- **抬起左键**：生成最终图形  
 
-拖动：实时显示当前图形
-
-抬起左键：生成最终图形
