@@ -28,19 +28,21 @@ pacman -S mingw-w64-ucrt-x86_64-freeglut
 
 项目包含以下文件：
 
-  t2_region_fill/
-  │
-  ├── main.c           # 程序入口
-  ├── draw.c           # 图形绘制：直线、三角形、矩形、圆角矩形、圆弧等
-  ├── draw.h
-  │
-  ├── color.c          # 新增：预定义颜色 + setColor 颜色工具
-  ├── color.h
-  │
-  ├── Makefile         # mingw32-make 编译配置
-  ├── build.bat        # Windows 一键编译
-  │
-  └── computer.png     # 程序运行截图
+```text
+  t2_region_fill/  
+  │  
+  ├── main.c           # 程序入口  
+  ├── draw.c           # 图形绘制：直线、三角形、矩形、圆角矩形、圆弧等  
+  ├── draw.h  
+  │  
+  ├── color.c          # 新增：预定义颜色 + setColor 颜色工具  
+  ├── color.h  
+  │  
+  ├── Makefile         # mingw32-make 编译配置  
+  ├── build.bat        # Windows 一键编译    
+  │  
+  └── computer.png     # 程序运行截图    
+```
 
 ## 3. 本任务相比 t1（线框图）新增/修改的内容
 
