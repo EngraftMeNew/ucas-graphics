@@ -175,7 +175,7 @@ namespace meshark
           // around v is: h = h->twin->next.
           if (!it)
             return *this; // already at end
-          assert(it->twin);
+          // assert(it->twin);
           HalfEdge next_he = it->twin->next;
           it = next_he;
 
