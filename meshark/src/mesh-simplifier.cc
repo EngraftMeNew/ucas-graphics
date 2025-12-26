@@ -99,42 +99,27 @@ namespace meshark
     // 删除不需要的元素
     // ============================
 
-    // 删除边之前，先把 MeshSimplifier 维护的边相关数据从map/EdgeData里移除
-    eraseEdgeMapping(e01);
-    eraseEdgeMapping(e12);
-    eraseEdgeMapping(e31);
-    edge_collapse_cost.removeEdgeData(e01);
-    edge_collapse_cost.removeEdgeData(e12);
-    edge_collapse_cost.removeEdgeData(e31);
-
-    // 删除顶点之前，先移除该顶点的Quadric数据
+    // 删除顶点之前：先移除该顶点的 Quadric 数据
     Q.removeVertexData(v1);
 
-    // 清空半边指针
-    auto detach_halfedge = [](HalfEdge h)
-    {
-      if (!h)
-        return;
-      h->next = static_cast<HalfEdge>(nullptr);
-      h->twin = static_cast<HalfEdge>(nullptr);
-      h->face = static_cast<Face>(nullptr);
-      h->edge = static_cast<Edge>(nullptr);
-      h->tip = static_cast<Vertex>(nullptr);
-      h->tail = static_cast<Vertex>(nullptr);
-    };
-
-    // 先删除两个面
+    // 先删除两个面（此时 face->halfEdge 等引用仍然有效）
     mesh.removeFace(f0);
     mesh.removeFace(f1);
 
-    // 再删除这两个面上的 6 条半边
-    detach_halfedge(h01);
-    detach_halfedge(h10);
-    detach_halfedge(h12);
-    detach_halfedge(h20);
-    detach_halfedge(h03);
-    detach_halfedge(h31);
+    // 逐条删除将消失的 3 条边，并同步移除 map / EdgeData，避免“交换删除”导致索引不同步
+    auto remove_edge_with_data = [&](Edge ed)
+    {
+      if (!ed)
+        return;
+      eraseEdgeMapping(ed);
+      edge_collapse_cost.removeEdgeData(ed);
+      mesh.removeEdge(ed);
+    };
+    remove_edge_with_data(e01);
+    remove_edge_with_data(e12);
+    remove_edge_with_data(e31);
 
+    // 再删除两个面上的 6 条半边
     mesh.removeHalfEdge(h01);
     mesh.removeHalfEdge(h10);
     mesh.removeHalfEdge(h12);
@@ -142,12 +127,7 @@ namespace meshark
     mesh.removeHalfEdge(h03);
     mesh.removeHalfEdge(h31);
 
-    // 删除消失的 3 条边： e01、 e12、e31
-    mesh.removeEdge(e01);
-    mesh.removeEdge(e12);
-    mesh.removeEdge(e31);
-
-    // 删除 v1
+    // 最后删除被合并掉的顶点 v1
     mesh.removeVertex(v1);
 
     return v0;
@@ -156,14 +136,42 @@ namespace meshark
   MeshSimplifier::MinCostEdgeCollapsingResult MeshSimplifier::collapseMinCostEdge()
   {
     auto min_cost_edge = cost_edge_map.begin()->second;
-    // TODO: finish this function
-    return {Edge(), false};
+    // TODO: [TASK4] finish this function
+    // 如果最小代价边不可坍缩：返回该边，并将其从 cost_edge_map 中移除，避免反复选中同一条边
+    if (!mesh.isCollapsable(min_cost_edge))
+    {
+      eraseEdgeMapping(min_cost_edge);
+      return {min_cost_edge, false};
+    }
+
+    // 最优坍缩位置
+    glm::vec3 opt_pos = computeOptimalCollapsePosition(min_cost_edge);
+
+    // 坍缩
+    Vertex v = collapseEdge(min_cost_edge);
+
+    //  更新坍缩后顶点位置
+    updateVertexPos(v, opt_pos);
+
+    return {Edge(), true};
   }
 
   Real MeshSimplifier::computeEdgeCost(Edge e) const
   {
-    // TODO: Implement this function
-    return 0.0;
+    // TODO: [TASK3] Implement this function
+    HalfEdge h = e->halfEdge();
+    Vertex v0 = h->tail;
+    Vertex v1 = h->tip;
+
+    glm::mat4 Qbar = Q(v0) + Q(v1);
+
+    glm::vec3 p = computeOptimalCollapsePosition(e);
+    glm::vec4 hp(p, 1.0f);
+
+    // 代价：p^T Q p
+    glm::vec4 Qhp = Qbar * hp;
+    Real cost = static_cast<Real>(glm::dot(hp, Qhp));
+    return cost;
   }
 
   void MeshSimplifier::runSimplify(Real alpha)
@@ -194,20 +202,161 @@ namespace meshark
 
   glm::vec3 MeshSimplifier::computeOptimalCollapsePosition(Edge e) const
   {
-    // TODO: implement this function
-    return glm::vec3(0.f);
+    // TODO: [TASK3] implement this function
+    HalfEdge h = e->halfEdge();
+    Vertex v0 = h->tail;
+    Vertex v1 = h->tip;
+
+    glm::mat4 Qbar = Q(v0) + Q(v1);
+
+    // 解线性系统：A * x = -b
+    // A 为 Qbar 左上角 3x3，b 为 Qbar 的第 4 列前三维 (q03, q13, q23)
+    glm::mat3 A = glm::mat3(Qbar);
+    glm::vec3 b = glm::vec3(Qbar[3]);
+
+    auto eval_cost = [&](const glm::vec3 &p) -> Real
+    {
+      glm::vec4 hp(p, 1.0f);
+      glm::vec4 Qhp = Qbar * hp;
+      return static_cast<Real>(glm::dot(hp, Qhp));
+    };
+
+    const Real det = static_cast<Real>(glm::determinant(A));
+    const Real eps = static_cast<Real>(1e-12);
+
+    if (std::abs(det) > eps)
+    {
+      glm::vec3 x = glm::inverse(A) * (-b);
+      return x;
+    }
+
+    // A 不可逆：退化情况，尝试端点与中点，取代价最小者
+    glm::vec3 p0 = mesh.pos(v0);
+    glm::vec3 p1 = mesh.pos(v1);
+    glm::vec3 pm = (p0 + p1) * 0.5f;
+
+    glm::vec3 best_p = p0;
+    Real best_cost = eval_cost(p0);
+
+    Real c1 = eval_cost(p1);
+    if (c1 < best_cost)
+    {
+      best_cost = c1;
+      best_p = p1;
+    }
+
+    Real cm = eval_cost(pm);
+    if (cm < best_cost)
+    {
+      best_cost = cm;
+      best_p = pm;
+    }
+
+    return best_p;
   }
 
   void MeshSimplifier::updateVertexPos(Vertex v, const glm::vec3 &pos)
   {
-    // TODO: implement this function
+    // TODO: [TASK3] implement this function
+    // 更新顶点位置
+    mesh.setVertexPos(v, pos);
+
+    // 收集需要更新 Q 的顶点：所有与 v 相邻的面片上的顶点
+    std::vector<Vertex> affected_vertices;
+    affected_vertices.reserve(v->degree() + 4);
+
+    auto push_unique_vertex = [&](Vertex x)
+    {
+      if (!x)
+        return;
+      for (Vertex y : affected_vertices)
+        if (y == x)
+          return;
+      affected_vertices.push_back(x);
+    };
+
+    push_unique_vertex(v);
+
+    for (HalfEdge h : v->outgoingHalfEdges())
+    {
+      if (!h)
+        continue;
+      push_unique_vertex(h->tip);
+
+      Face f = h->face;
+      if (!f)
+        continue;
+      for (HalfEdge fh : f->boundaryHalfEdges())
+      {
+        push_unique_vertex(fh->tip);
+      }
+    }
+
+    // 更新这些顶点的 Q
+    for (Vertex u : affected_vertices)
+    {
+      Q(u) = computeQuadricMatrix(u);
+    }
+
+    // 收集需要更新代价的边：所有与这些顶点相邻的边
+    std::vector<Edge> affected_edges;
+    affected_edges.reserve(affected_vertices.size() * 6);
+
+    auto push_unique_edge = [&](Edge x)
+    {
+      if (!x)
+        return;
+      for (Edge y : affected_edges)
+        if (y == x)
+          return;
+      affected_edges.push_back(x);
+    };
+
+    for (Vertex u : affected_vertices)
+    {
+      for (HalfEdge h : u->outgoingHalfEdges())
+      {
+        if (!h)
+          continue;
+        push_unique_edge(h->edge);
+      }
+    }
+
+    // 重新计算这些边的代价，并更新 multimap
+    for (Edge e : affected_edges)
+    {
+      if (!e)
+        continue;
+      Real new_cost = computeEdgeCost(e);
+      updateEdgeCost(e, new_cost);
+    }
   }
 
   glm::mat4 MeshSimplifier::computeQuadricMatrix(Vertex v) const
   {
-    // TODO: implement this function
+    // TODO: [TASK3] implement this function
+    glm::mat4 Qv(0.0f);
+    glm::vec3 pv = mesh.pos(v);
 
-    return glm::mat4(1.0f);
+    // Q(v) = Σ_f (p p^T), 其中平面 p=(a,b,c,d), ax+by+cz+d=0
+    for (HalfEdge h : v->outgoingHalfEdges())
+    {
+      if (!h)
+        continue;
+      Face f = h->face;
+      if (!f)
+        continue;
+
+      glm::vec3 n = mesh.normal(f);
+      n = glm::normalize(n);
+
+      Real d = static_cast<Real>(-glm::dot(n, pv));
+      glm::vec4 plane(n, static_cast<float>(d));
+
+      Qv += glm::outerProduct(plane, plane);
+    }
+
+    return Qv;
   }
 
   void MeshSimplifier::eraseEdgeMapping(Edge e)
@@ -224,4 +373,5 @@ namespace meshark
       }
     }
   }
+
 }

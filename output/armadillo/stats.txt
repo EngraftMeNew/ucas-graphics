@@ -1,0 +1,7 @@
+model: armadillo
+source: assets/armadillo.obj
+original: V=49990 F=99976 E=149964
+
+r25 (ratio=0.25): rounds=37494 V=12499 F=24994 E=37491
+r50 (ratio=0.50): rounds=24997 V=24996 F=49988 E=74982
+r75 (ratio=0.75): rounds=12500 V=37493 F=74982 E=112473

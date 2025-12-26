@@ -1,0 +1,7 @@
+model: complex_bunny
+source: assets/complex_bunny.obj
+original: V=14290 F=28576 E=42864
+
+r25 (ratio=0.25): rounds=10752 V=3574 F=7144 E=10716
+r50 (ratio=0.50): rounds=7180 V=7146 F=14288 E=21432
+r75 (ratio=0.75): rounds=3608 V=10718 F=21432 E=32148

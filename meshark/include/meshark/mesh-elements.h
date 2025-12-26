@@ -241,7 +241,10 @@ namespace meshark
     {
       int deg = 0;
       for (auto h : outgoingHalfEdges())
+      {
+        (void)he;
         deg++;
+      }
       return deg;
     }
 
