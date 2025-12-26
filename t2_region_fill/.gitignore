@@ -1,8 +1,0 @@
-# 编译产生的文件
-*.exe
-*.o
-*.obj
-*.log
-
-# VSCode 配置缓存
-.vscode/
