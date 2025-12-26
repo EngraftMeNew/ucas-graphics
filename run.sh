@@ -9,20 +9,9 @@ OUTPUT_DIR="output"
 RATIOS=("0.25" "0.50" "0.75")
 TAGS=("r25" "r50" "r75")
 
-# 找可执行文件：优先根目录 ./simplify.exe
-EXE=""
-if [[ -x "./simplify.exe" ]]; then
-  EXE="./simplify.exe"
-elif [[ -x "./simplify" ]]; then
-  EXE="./simplify"
-elif [[ -x "./bin/simplify" ]]; then
-  EXE="./bin/simplify"
-elif [[ -x "./bin/simplify.exe" ]]; then
-  EXE="./bin/simplify.exe"
-else
-  echo "[ERROR] Cannot find executable: ./simplify.exe (or ./simplify, ./bin/simplify, ./bin/simplify.exe)"
-  exit 1
-fi
+
+EXE="./simplify.exe"
+
 
 mkdir -p "$OUTPUT_DIR"
 
